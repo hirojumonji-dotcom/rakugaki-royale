@@ -211,14 +211,17 @@ export default function DrawScreen() {
         {PALETTE.map(c => (
           <TouchableOpacity
             key={c}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             style={[styles.colorDot, { backgroundColor: c }, penColor === c && styles.colorActive]}
             onPress={() => setPenColor(c)}
           />
         ))}
-        <View style={styles.divider} />
+      </View>
+      <View style={styles.toolbar2}>
         {SIZES.map(s => (
           <TouchableOpacity
             key={s}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             style={[styles.sizeBtn, penSize === s && styles.sizeActive]}
             onPress={() => setPenSize(s)}
           >
@@ -226,8 +229,19 @@ export default function DrawScreen() {
           </TouchableOpacity>
         ))}
         <View style={styles.divider} />
-        <TouchableOpacity style={styles.clearBtn} onPress={clearCanvas}>
-          <Text style={styles.clearText}>全消</Text>
+        <TouchableOpacity
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={[styles.toolBtn, penColor === '#ffffff' && styles.toolBtnActive]}
+          onPress={() => setPenColor('#ffffff')}
+        >
+          <Text style={styles.toolBtnText}>消</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.toolBtn}
+          onPress={clearCanvas}
+        >
+          <Text style={styles.toolBtnText}>全消</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -260,20 +274,28 @@ const styles = StyleSheet.create({
   },
   toolbar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, gap: 6, backgroundColor: COLORS.surface,
+    paddingTop: 10, paddingBottom: 4, gap: 10, backgroundColor: COLORS.surface,
     borderTopWidth: 1, borderTopColor: COLORS.border,
   },
-  colorDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: 'transparent' },
+  toolbar2: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingTop: 4, paddingBottom: 12, gap: 10, backgroundColor: COLORS.surface,
+  },
+  colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2.5, borderColor: 'transparent' },
   colorActive: { borderColor: '#000', transform: [{ scale: 1.15 }] },
   divider: { width: 1, height: 20, backgroundColor: '#eee', marginHorizontal: 4 },
   sizeBtn: {
-    width: 28, height: 28, borderRadius: 14, borderWidth: 1.5,
+    width: 34, height: 34, borderRadius: 17, borderWidth: 1.5,
     borderColor: '#ddd', justifyContent: 'center', alignItems: 'center',
   },
   sizeActive: { borderColor: '#000' },
   sizeDot: { borderRadius: 10, backgroundColor: '#333' },
-  clearBtn: { paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 5 },
-  clearText: { fontSize: 11, color: '#555' },
+  toolBtn: {
+    paddingVertical: 8, paddingHorizontal: 14,
+    borderWidth: 1.5, borderColor: '#ddd', borderRadius: 8, backgroundColor: '#fff',
+  },
+  toolBtnActive: { borderColor: '#000', backgroundColor: '#f0f0f0' },
+  toolBtnText: { fontSize: 13, color: '#333', fontWeight: '600' },
   // タイムアップオーバーレイ
   timeupOverlay: {
     flex: 1, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center',

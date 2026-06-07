@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { COLORS, FONT_SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { useRoomStore } from '../../stores/roomStore';
 import { useGameStore } from '../../stores/gameStore';
 import { subscribeToDrawings, subscribeToVotes } from '../../services/firebase/game';
 import { updateRoomPhase } from '../../services/firebase/rooms';
-import { auth } from '../../services/firebase/config';
+import { auth, db } from '../../services/firebase/config';
 import type { Drawing, Vote } from '../../types';
 
 interface ResultItem {
@@ -71,20 +72,44 @@ export default function ResultsScreen() {
     setTimeout(() => setShowButton(true), 600 + items.length * 1000 + 500);
   };
 
-  const handleNext = async () => {
-    const totalRounds = room?.settings?.roundCount || 3;
-    const nextRound = (currentRound || 1) + 1;
+  const [waitingNext, setWaitingNext] = useState(false);
 
-    if (nextRound > totalRounds) {
-      router.replace('/');
-    } else {
-      useGameStore.getState().setRound(nextRound);
-      useGameStore.getState().resetRound();
-      if (roomId) {
-        await updateRoomPhase(roomId, 'topic', { currentRound: nextRound });
+  // 全員がnextReadyになったら遷移
+  useEffect(() => {
+    if (!waitingNext || !roomId) return;
+    const unsub = onSnapshot(collection(db, 'rooms', roomId, 'players'), (snap) => {
+      const allPlayers = snap.docs.map(d => d.data());
+      const allNextReady = allPlayers.length > 0 && allPlayers.every(p => (p as any).nextReady);
+      if (allNextReady) {
+        const totalRounds = room?.settings?.roundCount || 3;
+        const nextRound = (currentRound || 1) + 1;
+        if (nextRound > totalRounds) {
+          router.replace('/');
+        } else {
+          useGameStore.getState().setRound(nextRound);
+          useGameStore.getState().resetRound();
+          // ホストだけがFirestoreを更新
+          const myPlayer = players.find(p => p.uid === auth.currentUser?.uid);
+          if (myPlayer?.isHost && roomId) {
+            updateRoomPhase(roomId, 'topic', { currentRound: nextRound, currentTopic: '' });
+            // nextReadyをリセット
+            snap.docs.forEach(d => {
+              updateDoc(doc(db, 'rooms', roomId, 'players', d.id), { nextReady: false });
+            });
+          }
+          router.replace('/game/topic');
+        }
       }
-      router.replace('/game/topic');
-    }
+    });
+    return unsub;
+  }, [waitingNext, roomId]);
+
+  const handleNext = async () => {
+    if (!roomId) return;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    await updateDoc(doc(db, 'rooms', roomId, 'players', uid), { nextReady: true });
+    setWaitingNext(true);
   };
 
   const renderImage = (imageUrl: string) => {
@@ -127,12 +152,15 @@ export default function ResultsScreen() {
         <Text style={styles.loadingText}>結果を集計中...</Text>
       )}
 
-      {showButton && (
+      {showButton && !waitingNext && (
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
           <Text style={styles.nextBtnText}>
-            {(currentRound || 1) >= (room?.settings?.roundCount || 3) ? 'ホームに戻る' : '次のラウンドへ'}
+            {(currentRound || 1) >= (room?.settings?.roundCount || 3) ? 'もう一回遊ぶ' : '次のラウンドへ'}
           </Text>
         </TouchableOpacity>
+      )}
+      {waitingNext && (
+        <Text style={styles.waitingText}>みんなを待っています...</Text>
       )}
     </ScrollView>
   );
@@ -169,4 +197,5 @@ const styles = StyleSheet.create({
     paddingVertical: 16, paddingHorizontal: 36, borderRadius: RADIUS.md,
   },
   nextBtnText: { color: COLORS.primaryText, fontSize: FONT_SIZES.lg, fontWeight: '700' },
+  waitingText: { marginTop: SPACING.xl, fontSize: FONT_SIZES.sm, color: COLORS.textMuted },
 });
