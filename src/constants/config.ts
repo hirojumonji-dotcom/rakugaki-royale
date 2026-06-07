@@ -1,0 +1,24 @@
+export const GAME_CONFIG = {
+  MIN_PLAYERS: 4,
+  MAX_DRAWERS: 5,
+  MAX_PLAYERS: 20,
+  DRAW_TIME_OPTIONS: [10, 20, 30] as const,
+  ROUND_OPTIONS: [3, 5, 10] as const,
+  DEFAULT_DRAW_TIME: 10,
+  DEFAULT_ROUNDS: 3,
+  ROOM_CODE_LENGTH: 4,
+  ROOM_EXPIRE_HOURS: 2,
+  COUNTDOWN_SECONDS: 3,
+  CUSTOM_TOPIC_MAX_LENGTH: 50,
+  IMAGE_MAX_SIZE_KB: 200,
+};
+
+export const PREMIUM_PRODUCTS = {
+  DAILY_PASS: 'daily_pass_120',
+  MONTHLY: 'premium_monthly_480',
+} as const;
+
+export const ADMOB_IDS = {
+  INTERSTITIAL_IOS: 'ca-app-pub-XXXXXXXXXX/XXXXXXXXXX',
+  INTERSTITIAL_ANDROID: 'ca-app-pub-XXXXXXXXXX/XXXXXXXXXX',
+} as const;
