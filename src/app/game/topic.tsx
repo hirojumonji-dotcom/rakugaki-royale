@@ -30,16 +30,16 @@ export default function TopicScreen() {
       setTopicReady(true);
       useGameStore.getState().setTopic(selected);
       if (roomId) {
-        updateRoomPhase(roomId, 'draw', { currentTopic: selected });
+        updateRoomPhase(roomId, 'draw', { currentTopic: selected, topicRound: currentRound });
       }
     } else {
       // ゲスト: Firestoreのroom.currentTopicをリアルタイム監視
+      // currentRoundと一致するお題のみ受け取る（前ラウンドの残りを無視）
       if (!roomId) return;
       const unsub = onSnapshot(doc(db, 'rooms', roomId), (snap) => {
         if (!snap.exists()) return;
         const data = snap.data();
-        // 空でない新しいお題が来たら表示
-        if (data.currentTopic && data.currentTopic !== '') {
+        if (data.currentTopic && data.currentTopic !== '' && data.topicRound === currentRound) {
           setLocalTopic(data.currentTopic);
           setTopicReady(true);
           useGameStore.getState().setTopic(data.currentTopic);

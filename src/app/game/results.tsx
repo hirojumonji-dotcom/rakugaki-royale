@@ -74,35 +74,45 @@ export default function ResultsScreen() {
 
   const [waitingNext, setWaitingNext] = useState(false);
 
-  // 全員がnextReadyになったら遷移
+  // 全員がnextReadyになったら、ホストがFirestoreを更新→全員がroom変更を検知して遷移
   useEffect(() => {
     if (!waitingNext || !roomId) return;
-    const unsub = onSnapshot(collection(db, 'rooms', roomId, 'players'), (snap) => {
+    const unsub = onSnapshot(collection(db, 'rooms', roomId, 'players'), async (snap) => {
       const allPlayers = snap.docs.map(d => d.data());
       const allNextReady = allPlayers.length > 0 && allPlayers.every(p => (p as any).nextReady);
       if (allNextReady) {
-        const totalRounds = room?.settings?.roundCount || 3;
-        const nextRound = (currentRound || 1) + 1;
-        if (nextRound > totalRounds) {
-          router.replace('/');
-        } else {
-          useGameStore.getState().setRound(nextRound);
-          useGameStore.getState().resetRound();
-          // ホストだけがFirestoreを更新
-          const myPlayer = players.find(p => p.uid === auth.currentUser?.uid);
-          if (myPlayer?.isHost && roomId) {
-            updateRoomPhase(roomId, 'topic', { currentRound: nextRound, currentTopic: '' });
-            // nextReadyをリセット
-            snap.docs.forEach(d => {
-              updateDoc(doc(db, 'rooms', roomId, 'players', d.id), { nextReady: false });
-            });
+        const myPlayer = players.find(p => p.uid === auth.currentUser?.uid);
+        if (myPlayer?.isHost && roomId) {
+          const totalRounds = room?.settings?.roundCount || 3;
+          const nextRound = (currentRound || 1) + 1;
+          if (nextRound > totalRounds) {
+            await updateRoomPhase(roomId, 'finished', { currentRound: nextRound });
+          } else {
+            await updateRoomPhase(roomId, 'topic', { currentRound: nextRound, currentTopic: '' });
           }
-          router.replace('/game/topic');
+          // nextReadyをリセット
+          for (const d of snap.docs) {
+            await updateDoc(doc(db, 'rooms', roomId, 'players', d.id), { nextReady: false });
+          }
         }
       }
     });
     return unsub;
   }, [waitingNext, roomId]);
+
+  // room.currentPhaseの変更を検知して全員同時に遷移
+  useEffect(() => {
+    if (!waitingNext || !room) return;
+    const totalRounds = room?.settings?.roundCount || 3;
+    const nextRound = (currentRound || 1) + 1;
+    if (room.currentPhase === 'finished' || nextRound > totalRounds && room.currentRound === nextRound) {
+      router.replace('/');
+    } else if (room.currentPhase === 'topic' && room.currentRound === nextRound) {
+      useGameStore.getState().setRound(nextRound);
+      useGameStore.getState().resetRound();
+      router.replace('/game/topic');
+    }
+  }, [waitingNext, room?.currentPhase, room?.currentRound]);
 
   const handleNext = async () => {
     if (!roomId) return;
